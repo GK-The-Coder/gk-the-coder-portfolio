@@ -1,0 +1,47 @@
+﻿
+> portfolio-nextjs@0.1.0 build
+> next build
+
+   Linting and checking validity of types ...
+   Creating an optimized production build ...
+ Ô£ô Compiled successfully
+   Collecting page data ...
+   Generating static pages (0/3) ...
+
+ Ô£ô Generating static pages (3/3) 
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (pages)                              Size     First Load JS
+Ôöî ╬╗ /                                      3.07 kB         119 kB
+Ôö£   /_app                                  0 B            79.4 kB
+Ôö£ Ôùï /404                                   180 B          79.6 kB
+Ôö£ ╬╗ /admin                                 4.15 kB        83.6 kB
+Ôö£ Ôùï /admin/login                           767 B          80.2 kB
+Ôö£ ╬╗ /api/about                             0 B            79.4 kB
+Ôö£ ╬╗ /api/auth/login                        0 B            79.4 kB
+Ôö£ ╬╗ /api/auth/logout                       0 B            79.4 kB
+Ôö£ ╬╗ /api/contact                           0 B            79.4 kB
+Ôö£ ╬╗ /api/contact/[id]                      0 B            79.4 kB
+Ôö£ ╬╗ /api/experience                        0 B            79.4 kB
+Ôö£ ╬╗ /api/experience/[id]                   0 B            79.4 kB
+Ôö£ ╬╗ /api/projects                          0 B            79.4 kB
+Ôö£ ╬╗ /api/projects/[id]                     0 B            79.4 kB
+Ôö£ ╬╗ /api/qualification                     0 B            79.4 kB
+Ôö£ ╬╗ /api/qualification/[id]                0 B            79.4 kB
+Ôö£ ╬╗ /api/resume                            0 B            79.4 kB
+Ôö£ ╬╗ /api/resume/[id]                       0 B            79.4 kB
+Ôö£ ╬╗ /api/skills                            0 B            79.4 kB
+Ôö£ ╬╗ /api/skills/[id]                       0 B            79.4 kB
+Ôö£ ╬╗ /experience                            969 B           117 kB
+Ôöö ╬╗ /projects                              1.06 kB         117 kB
++ First Load JS shared by all              85.3 kB
+  Ôö£ chunks/framework-fae63b21a27d6472.js   45.4 kB
+  Ôö£ chunks/main-22b029abc2beadb0.js        32.9 kB
+  Ôö£ chunks/pages/_app-f4023ab38864d125.js  418 B
+  Ôö£ chunks/webpack-fd8027ecb5121007.js     770 B
+  Ôöö css/1631c0d60d77312b.css               5.84 kB
+
+╬╗  (Server)  server-side renders at runtime (uses getInitialProps or getServerSideProps)
+Ôùï  (Static)  automatically rendered as static HTML (uses no initial props)
+

@@ -55,7 +55,7 @@ export default function Admin({ initialData }) {
   const [editingContactId, setEditingContactId] = useState(null)
 
   const [projects, setProjects] = useState(initialData.initialProjects)
-  const [projectForm, setProjectForm] = useState({ title: '', description: '', link: '', image: '' })
+  const [projectForm, setProjectForm] = useState({ title: '', description: '', link: '', image: '', repo: '', tags: '', featured: false })
   const [editingProjectId, setEditingProjectId] = useState(null)
 
   const [experiences, setExperiences] = useState(initialData.initialExperiences)
@@ -135,7 +135,10 @@ export default function Admin({ initialData }) {
       skills: { ...skillForm, keywords: skillForm.keywords.split(',').map((k) => k.trim()).filter(Boolean) },
       resume: resumeForm,
       contact: contactForm,
-      projects: projectForm,
+      projects: {
+        ...projectForm,
+        tags: projectForm.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
+      },
       experience: experienceForm,
     }
 
@@ -167,7 +170,7 @@ export default function Admin({ initialData }) {
     setSkillForm({ name: '', category: '', level: '', keywords: '' })
     setResumeForm({ link: '' })
     setContactForm({ type: '', value: '', link: '' })
-    setProjectForm({ title: '', description: '', link: '', image: '' })
+    setProjectForm({ title: '', description: '', link: '', image: '', repo: '', tags: '', featured: false })
     setExperienceForm({ title: '', company: '', startDate: '', endDate: '', summary: '' })
     setEditingQualificationId(null)
     setEditingSkillId(null)
@@ -221,6 +224,9 @@ export default function Admin({ initialData }) {
           description: item.description || '',
           link: item.link || '',
           image: item.image || '',
+          repo: item.repo || '',
+          tags: (item.tags || []).join(', '),
+          featured: Boolean(item.featured),
         })
         setEditingProjectId(id)
         break
@@ -451,11 +457,32 @@ export default function Admin({ initialData }) {
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
-                  value={projectForm.link}
-                  onChange={(e) => setProjectForm({ ...projectForm, link: e.target.value })}
-                  placeholder="Project Link"
+                  value={projectForm.repo}
+                  onChange={(e) => setProjectForm({ ...projectForm, repo: e.target.value })}
+                  placeholder="Repository URL"
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
+                <input
+                  value={projectForm.link}
+                  onChange={(e) => setProjectForm({ ...projectForm, link: e.target.value })}
+                  placeholder="Live project URL"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={projectForm.tags}
+                  onChange={(e) => setProjectForm({ ...projectForm, tags: e.target.value })}
+                  placeholder="Tags (comma separated e.g. Next.js, API, MongoDB)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <label className="inline-flex items-center gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={projectForm.featured}
+                    onChange={(e) => setProjectForm({ ...projectForm, featured: e.target.checked })}
+                    className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500"
+                  />
+                  Mark as featured
+                </label>
               </>
             )}
 
@@ -516,7 +543,7 @@ export default function Admin({ initialData }) {
                     setSkillForm({ name: '', category: '', level: '', keywords: '' })
                     setResumeForm({ title: '', subtitle: '', year: '', description: '', link: '' })
                     setContactForm({ type: '', value: '', link: '' })
-                    setProjectForm({ title: '', description: '', link: '', image: '' })
+                    setProjectForm({ title: '', description: '', link: '', image: '', repo: '', tags: '', featured: false })
                     setExperienceForm({ title: '', company: '', startDate: '', endDate: '', summary: '' })
                   }}
                   className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold transition"
@@ -650,17 +677,27 @@ export default function Admin({ initialData }) {
                           <img src={p.image} alt={p.title} className="w-full h-40 object-cover" />
                         </div>
                       )}
-                      <div className="flex items-start justify-between gap-4 mb-2">
+                      <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
-                          <h3 className="font-bold text-white">{p.title}</h3>
-                          <p className="text-slate-400 text-sm">{p.link}</p>
+                          <div className="flex items-center gap-2 mb-2">
+                            <h3 className="font-bold text-white">{p.title}</h3>
+                            {p.featured && <span className="rounded-full bg-cyan-500/15 px-2 py-1 text-[11px] font-semibold uppercase tracking-[0.2em] text-cyan-100">Featured</span>}
+                          </div>
+                          <p className="text-slate-400 text-sm">{p.link || p.repo || 'No link provided'}</p>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => editItem(p._id)} className="px-2 py-1 text-sm bg-amber-600 hover:bg-amber-700 rounded transition">Edit</button>
                           <button onClick={() => removeItem(p._id)} className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition">Delete</button>
                         </div>
                       </div>
-                      <p className="text-slate-300 text-sm">{p.description}</p>
+                      <p className="text-slate-300 text-sm mb-3">{p.description}</p>
+                      {p.tags?.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {p.tags.map((tag) => (
+                            <span key={tag} className="rounded-full bg-[rgba(255,255,255,0.05)] px-3 py-1 text-[11px] text-slate-300">{tag}</span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   ))
                 )}

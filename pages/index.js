@@ -1,6 +1,7 @@
 import Head from 'next/head'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import Hero from '../components/Hero'
 import connect from '../lib/mongodb'
 import About from '../models/About'
 import Qualification from '../models/Qualification'
@@ -65,39 +66,7 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
         </div>
       )}
 
-      <motion.section variants={itemVariants} className="pt-28 pb-16 px-6">
-        <div className="max-w-6xl mx-auto grid gap-8 lg:grid-cols-[1.4fr_1fr] items-center">
-          <div>
-            <motion.h1 variants={itemVariants} className="text-5xl md:text-6xl font-bold leading-tight mb-6">
-              Ganesh Karadkar
-              <br />
-              Full-Stack Developer & Backend-Focused Engineer Building Scalable Web Applications and AI-Powered Systems.
-            </motion.h1>
-            <motion.p variants={itemVariants} className="text-xl text-slate-300 mb-6 max-w-2xl">
-              I’m a B.Tech student passionate about full-stack development, backend architecture, AI integration, and solving complex problems through clean and scalable systems. I build production-ready applications using modern technologies while continuously improving my problem-solving skills through Data Structures & Algorithms.
-            </motion.p>
-            <motion.div variants={itemVariants} className="flex flex-wrap gap-4 items-center">
-              <Link href="/projects" className="inline-flex items-center justify-center rounded-full bg-cyan-500 px-6 py-3 text-sm font-semibold text-slate-950 transition hover:bg-cyan-400">
-                View Projects
-              </Link>
-              <Link href="#contact" className="inline-flex items-center justify-center rounded-full border border-slate-700 px-6 py-3 text-sm font-semibold text-white transition hover:border-cyan-400 hover:text-cyan-300">
-                Contact Me
-              </Link>
-            </motion.div>
-            <div className="mt-4 text-sm text-slate-300">JavaScript • React • Next.js • Node.js • Express.js • MongoDB • AI • DSA</div>
-          </div>
-          <motion.div variants={itemVariants} className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-8 shadow-2xl shadow-black/20">
-            <h2 className="text-2xl font-bold mb-4">Current focus</h2>
-            <ul className="space-y-3 text-slate-300">
-              <li>Full-Stack Web Development</li>
-              <li>Backend System Design & APIs</li>
-              <li>AI-Powered Applications</li>
-              <li>Data Structures & Algorithms</li>
-              <li>Scalable and Maintainable Architecture</li>
-            </ul>
-          </motion.div>
-        </div>
-      </motion.section>
+      <Hero about={about} resumeItems={resumeItems} />
 
       <motion.section id="about" variants={itemVariants} className="py-20 px-6 border-t border-slate-800">
         <div className="max-w-6xl mx-auto">
