@@ -1,5 +1,6 @@
 import Head from 'next/head'
 import Link from 'next/link'
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import Hero from '../components/Hero'
 import connect from '../lib/mongodb'
@@ -30,6 +31,8 @@ const itemVariants = {
 }
 
 export default function Home({ about, qualifications, skills, resumeItems, contacts, dbError }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <>
       <Head>
@@ -43,12 +46,23 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
         initial="hidden"
         animate="visible"
         variants={containerVariants}
-        className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white"
+        className="min-h-screen overflow-x-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white"
       >
-      <motion.nav variants={itemVariants} className="fixed w-full top-0 z-50 bg-slate-950/90 backdrop-blur-xl border-b border-slate-800">
-        <div className="max-w-6xl mx-auto px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="text-xl font-bold">Ganesh Karadkar</div>
-          <div className="flex flex-wrap items-center gap-4 text-slate-300 text-sm">
+      <motion.nav variants={itemVariants} className="fixed top-0 z-50 w-full border-b border-slate-800 bg-slate-950/95 backdrop-blur-xl">
+        <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between px-5 sm:px-6">
+          <Link href="#" className="text-base font-bold sm:text-xl" onClick={() => setMobileMenuOpen(false)}>Ganesh Karadkar</Link>
+          <button
+            type="button"
+            className="inline-flex h-10 w-10 items-center justify-center rounded-lg border border-slate-700 text-slate-200 transition hover:border-cyan-400 hover:text-white md:hidden"
+            aria-label="Toggle navigation menu"
+            aria-expanded={mobileMenuOpen}
+            aria-controls="mobile-navigation"
+            onClick={() => setMobileMenuOpen((open) => !open)}
+          >
+            <span className="sr-only">Menu</span>
+            <span aria-hidden="true" className="text-2xl leading-none">{mobileMenuOpen ? '×' : '☰'}</span>
+          </button>
+          <div className="hidden items-center gap-4 text-sm text-slate-300 md:flex">
             <Link href="#about" className="hover:text-white transition">About</Link>
             <Link href="#qualification" className="hover:text-white transition">Qualification</Link>
             <Link href="#skills" className="hover:text-white transition">Skills</Link>
@@ -58,6 +72,17 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
             <Link href="/experience" className="text-cyan-300 hover:text-white transition">Experience</Link>
           </div>
         </div>
+        {mobileMenuOpen && (
+          <div id="mobile-navigation" className="grid grid-cols-2 gap-1 border-t border-slate-800 bg-slate-950 px-5 py-3 text-sm text-slate-300 md:hidden">
+            <Link href="#about" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>About</Link>
+            <Link href="#qualification" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Qualification</Link>
+            <Link href="#skills" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Skills</Link>
+            <Link href="#resume" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Resume</Link>
+            <Link href="#contact" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Contact</Link>
+            <Link href="/projects" className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Projects</Link>
+            <Link href="/experience" className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Experience</Link>
+          </div>
+        )}
       </motion.nav>
 
       {dbError && (

@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import { motion } from 'framer-motion'
 
 export default function ProjectCard({ id, title, description, image, link, repo, tags = [], featured }) {
@@ -8,7 +9,7 @@ export default function ProjectCard({ id, title, description, image, link, repo,
     <motion.article whileHover={{ y: -6 }} transition={{ type: 'spring', stiffness: 220 }} className="rounded-2xl overflow-hidden border border-[rgba(255,255,255,0.04)] bg-[rgba(11,18,32,0.6)] glass-card">
       {image ? (
         <div className="relative h-56 bg-slate-800 overflow-hidden">
-          <img src={image} alt={title} loading="lazy" className="w-full h-full object-cover" />
+          <Image src={image} alt={title} fill sizes="(min-width: 768px) 50vw, 100vw" unoptimized className="object-cover" />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
           {featured && <div className="absolute left-4 top-4 px-3 py-1 rounded-full text-xs font-semibold bg-[var(--primary)]/90 text-white neon-glow">Featured</div>}
         </div>

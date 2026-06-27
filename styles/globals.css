@@ -26,6 +26,15 @@ html, body, #__next {
   color: #E6EEF8;
 }
 
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 5rem;
+}
+
+body {
+  overflow-x: hidden;
+}
+
 /* Heading font */
 h1,h2,h3,h4,h5 { font-family: 'Manrope', sans-serif; }
 

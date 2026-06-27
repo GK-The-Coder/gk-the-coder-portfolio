@@ -1,4 +1,5 @@
 import React from "react";
+import Image from "next/image";
 
 const Hero = () => {
   return (
@@ -11,7 +12,7 @@ const Hero = () => {
         {/* Left Content */}
         <div className="text-center lg:text-left space-y-6">
           <h1 className="text-5xl md:text-7xl font-bold leading-tight">
-            Hi, I\'m <span className="gradient-text">Your Name</span>
+            Hi, I’m <span className="gradient-text">Your Name</span>
           </h1>
           <p className="text-xl md:text-2xl text-slate-400 font-medium">
             Full Stack Developer | MERN Stack | Problem Solver
@@ -36,11 +37,14 @@ const Hero = () => {
           {/* Glowing Gradient Ring */}
           <div className="relative w-64 h-64 md:w-80 md:h-80 rounded-full p-1 bg-gradient-to-tr from-primary via-secondary to-highlight animate-spin-slow">
             <div className="w-full h-full rounded-full bg-background p-1">
-              <div className="w-full h-full rounded-full overflow-hidden border-4 border-background">
-                <img 
+              <div className="relative w-full h-full rounded-full overflow-hidden border-4 border-background">
+                <Image
                   src="https://via.placeholder.com/400" 
                   alt="Profile" 
-                  className="w-full h-full object-cover"
+                  fill
+                  sizes="320px"
+                  unoptimized
+                  className="object-cover"
                 />
               </div>
             </div>

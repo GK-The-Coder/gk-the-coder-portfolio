@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import Image from 'next/image'
 import connect from '../../lib/mongodb'
 import Project from '../../models/Project'
 import { motion } from 'framer-motion'
@@ -23,7 +24,7 @@ export default function ProjectDetail({ project, dbError }) {
       <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6 py-20">
         <div className="max-w-3xl rounded-3xl border border-slate-800 bg-slate-900 p-10 text-slate-300">
           <h1 className="text-3xl font-bold mb-4">Project not found</h1>
-          <p>The project you're looking for does not exist or has been removed.</p>
+          <p>The project you’re looking for does not exist or has been removed.</p>
           <Link href="/projects" className="mt-6 inline-flex text-cyan-300 hover:text-white">Back to projects</Link>
         </div>
       </main>
@@ -42,8 +43,8 @@ export default function ProjectDetail({ project, dbError }) {
         </div>
 
         {project.image ? (
-          <div className="overflow-hidden rounded-[32px] border border-[rgba(255,255,255,0.05)] bg-slate-900 shadow-2xl shadow-black/20 mb-10">
-            <img src={project.image} alt={project.title} className="w-full h-[420px] object-cover" />
+          <div className="relative mb-10 h-64 overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.05)] bg-slate-900 shadow-2xl shadow-black/20 sm:h-[420px] sm:rounded-[32px]">
+            <Image src={project.image} alt={project.title} fill sizes="(min-width: 1152px) 1152px, 100vw" unoptimized className="object-cover" />
           </div>
         ) : null}
 

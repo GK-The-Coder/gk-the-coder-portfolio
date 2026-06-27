@@ -13,7 +13,7 @@ const About = () => {
             My approach combines a deep understanding of software architecture with a keen eye for visual detail.
           </p>
           <p className="text-lg text-slate-400 leading-relaxed">
-            Over the years, I\'ve evolved from a hobbyist to a professional engineer, tackling complex problems and building products that scale. 
+            Over the years, I’ve evolved from a hobbyist to a professional engineer, tackling complex problems and building products that scale.
             I believe in clean code, continuous learning, and the power of minimal, focused design.
           </p>
           <div className="flex gap-8 pt-4">
@@ -38,7 +38,7 @@ const About = () => {
               </div>
               <div className="flex gap-4">
                 <span className="text-secondary">??</span>
-                <p className="text-slate-400">User-centric design. If it\'s not intuitive, it\'s not finished.</p>
+                <p className="text-slate-400">User-centric design. If it’s not intuitive, it’s not finished.</p>
               </div>
               <div className="flex gap-4">
                 <span className="text-highlight">???</span>

@@ -7,6 +7,7 @@ import Resume from '../../models/Resume'
 import Contact from '../../models/Contact'
 import About from '../../models/About'
 import { useState, useEffect } from 'react'
+import Image from 'next/image'
 import Router from 'next/router'
 
 const tabs = [
@@ -673,8 +674,8 @@ export default function Admin({ initialData }) {
                   projects.map((p) => (
                     <div key={p._id} className="bg-slate-700 p-4 rounded-lg border border-slate-600 hover:border-cyan-400 transition">
                       {p.image && (
-                        <div className="mb-4 overflow-hidden rounded-2xl bg-slate-900">
-                          <img src={p.image} alt={p.title} className="w-full h-40 object-cover" />
+                        <div className="relative mb-4 h-40 overflow-hidden rounded-2xl bg-slate-900">
+                          <Image src={p.image} alt={p.title} fill sizes="(min-width: 768px) 50vw, 100vw" unoptimized className="object-cover" />
                         </div>
                       )}
                       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">

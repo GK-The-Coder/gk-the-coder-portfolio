@@ -7,9 +7,9 @@ const Contact = () => {
         <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 blur-3xl rounded-full" />
         <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-secondary/20 blur-3xl rounded-full" />
         
-        <h2 className="text-4xl md:text-5xl font-bold mb-6">Let\'s Build <span className="gradient-text">Something Epic</span></h2>
+        <h2 className="text-4xl md:text-5xl font-bold mb-6">Let’s Build <span className="gradient-text">Something Epic</span></h2>
         <p className="text-slate-400 text-lg mb-10 max-w-xl mx-auto leading-relaxed">
-          I\'m currently open to new opportunities and collaborations. Whether you have a project idea or just want to say hi, my inbox is always open.
+          I’m currently open to new opportunities and collaborations. Whether you have a project idea or just want to say hi, my inbox is always open.
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
