@@ -10,14 +10,14 @@ const optionalImageUrl = {
   message: 'Image must be an http(s) URL or a path beginning with /.',
 }
 
-const CertSchema = new mongoose.Schema({
+const AchievementSchema = new mongoose.Schema({
   title: { type: String, required: true, trim: true, maxlength: 200 },
-  issuer: { type: String, trim: true, maxlength: 100 },
-  date: Date,
-  url: { type: String, trim: true, validate: optionalWebUrl },
-  credentialId: { type: String, trim: true, maxlength: 100 },
-  image: { type: String, trim: true, validate: optionalImageUrl },
   description: { type: String, trim: true, maxlength: 2000 },
+  category: { type: String, trim: true, maxlength: 50 },
+  date: Date,
+  images: [{ type: String, trim: true, validate: optionalImageUrl }],
+  link: { type: String, trim: true, validate: optionalWebUrl },
+  organization: { type: String, trim: true, maxlength: 100 },
 }, { timestamps: true })
 
-module.exports = mongoose.models.Certification || mongoose.model('Certification', CertSchema)
+module.exports = mongoose.models.Achievement || mongoose.model('Achievement', AchievementSchema)

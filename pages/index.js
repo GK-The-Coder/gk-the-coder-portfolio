@@ -69,7 +69,8 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
             <Link href="#resume" className="hover:text-white transition">Resume</Link>
             <Link href="#contact" className="hover:text-white transition">Contact</Link>
             <Link href="/projects" className="text-cyan-300 hover:text-white transition">Projects</Link>
-            <Link href="/experience" className="text-cyan-300 hover:text-white transition">Experience</Link>
+            <Link href="/certifications" className="text-cyan-300 hover:text-white transition">Certifications</Link>
+            <Link href="/achievements" className="text-cyan-300 hover:text-white transition">Achievements</Link>
           </div>
         </div>
         {mobileMenuOpen && (
@@ -80,7 +81,8 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
             <Link href="#resume" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Resume</Link>
             <Link href="#contact" className="rounded-lg px-3 py-2 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Contact</Link>
             <Link href="/projects" className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Projects</Link>
-            <Link href="/experience" className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Experience</Link>
+            <Link href="/certifications" className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Certifications</Link>
+            <Link href="/achievements" className="rounded-lg px-3 py-2 text-cyan-300 hover:bg-slate-900 hover:text-white" onClick={() => setMobileMenuOpen(false)}>Achievements</Link>
           </div>
         )}
       </motion.nav>
@@ -92,37 +94,6 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
       )}
 
       <Hero about={about} resumeItems={resumeItems} />
-
-      <motion.section id="about" variants={itemVariants} className="py-20 px-6 border-t border-slate-800">
-        <div className="max-w-6xl mx-auto">
-          <h2 className="text-3xl font-bold mb-6">About Me</h2>
-          <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr]">
-            <div className="rounded-[32px] border border-slate-800 bg-slate-900/80 p-8">
-              <h3 className="text-xl font-semibold mb-4">{about.headline || 'Backend-focused developer'}</h3>
-              {about.paragraphs?.length > 0 ? (
-                <div className="space-y-4 text-slate-300 leading-8">
-                  {about.paragraphs.slice(0, 1).map((paragraph, index) => (
-                    <p key={index}>{paragraph}</p>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-slate-300 leading-8">
-                  Focused on creating performant web applications, intelligent systems, and developer-grade backend architectures while pursuing B.Tech in Computer Engineering.
-                </p>
-              )}
-            </div>
-            <div className="space-y-4 text-slate-300 leading-8">
-              {about.paragraphs?.length > 1 ? (
-                about.paragraphs.slice(1).map((paragraph, index) => (
-                  <p key={index}>{paragraph}</p>
-                ))
-              ) : about.paragraphs?.length === 1 ? null : (
-                <p>No about content added yet. Use the admin dashboard to manage this section.</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </motion.section>
 
       <motion.section id="qualification" variants={itemVariants} className="py-20 px-6">
         <div className="max-w-6xl mx-auto">
@@ -136,7 +107,7 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
                       <h3 className="text-xl font-semibold">{item.title}</h3>
                       <p className="text-slate-400">{item.institution}</p>
                     </div>
-                    <span className="text-slate-500">{item.date}</span>
+                    <span className="text-slate-500">{item.date ? new Date(item.date).toLocaleDateString(undefined, { year: 'numeric', month: 'short' }) : ''}</span>
                   </div>
                   <p className="text-slate-300">{item.description}</p>
                   {item.url && (
@@ -174,7 +145,7 @@ export default function Home({ about, qualifications, skills, resumeItems, conta
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
             <h2 className="text-3xl font-bold">Resume</h2>
-            <Link href="/projects" className="text-cyan-300 hover:text-white font-semibold">View full projects page</Link>
+            <Link href="/projects" className="text-cyan-300 hover:text-white font-semibold">View projects →</Link>
           </div>
           <div className="grid gap-6">
             {resumeItems.length > 0 && resumeItems[0].link ? (

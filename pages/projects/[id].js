@@ -3,10 +3,12 @@ import Image from 'next/image'
 import connect from '../../lib/mongodb'
 import Project from '../../models/Project'
 import { motion } from 'framer-motion'
+import mongoose from 'mongoose'
 
 const itemVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.45 } } }
 
 export default function ProjectDetail({ project, dbError }) {
+  const hasValidImage = project?.image && (project.image.startsWith('/') || /^https?:\/\/[^\s]+$/i.test(project.image))
   if (dbError) {
     return (
       <main className="min-h-screen bg-slate-950 text-white flex items-center justify-center px-6 py-20">
@@ -42,7 +44,7 @@ export default function ProjectDetail({ project, dbError }) {
           <Link href="/projects" className="text-cyan-300 hover:text-white font-semibold">Back to all projects</Link>
         </div>
 
-        {project.image ? (
+        {hasValidImage ? (
           <div className="relative mb-10 h-64 overflow-hidden rounded-[24px] border border-[rgba(255,255,255,0.05)] bg-slate-900 shadow-2xl shadow-black/20 sm:h-[420px] sm:rounded-[32px]">
             <Image src={project.image} alt={project.title} fill sizes="(min-width: 1152px) 1152px, 100vw" unoptimized className="object-cover" />
           </div>
@@ -108,6 +110,9 @@ export async function getServerSideProps(context) {
   let dbError = false
 
   try {
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return { props: { project: null, dbError: false } }
+    }
     await connect()
     project = await Project.findById(id).lean()
   } catch (error) {

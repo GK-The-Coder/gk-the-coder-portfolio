@@ -1,12 +1,14 @@
 import connect from '../../lib/mongodb'
 import Project from '../../models/Project'
 import Experience from '../../models/Experience'
+import Certification from '../../models/Certification'
+import Achievement from '../../models/Achievement'
 import Qualification from '../../models/Qualification'
 import Skill from '../../models/Skill'
 import Resume from '../../models/Resume'
 import Contact from '../../models/Contact'
 import About from '../../models/About'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Image from 'next/image'
 import Router from 'next/router'
 
@@ -14,6 +16,8 @@ const tabs = [
   { key: 'about', label: 'About' },
   { key: 'qualification', label: 'Qualification' },
   { key: 'skills', label: 'Skills' },
+  { key: 'certifications', label: 'Certifications' },
+  { key: 'achievements', label: 'Achievements' },
   { key: 'resume', label: 'Resume' },
   { key: 'contact', label: 'Contact' },
   { key: 'projects', label: 'Projects' },
@@ -24,15 +28,71 @@ const apiPaths = {
   about: '/api/about',
   qualification: '/api/qualification',
   skills: '/api/skills',
+  certifications: '/api/certification',
+  achievements: '/api/achievement',
   resume: '/api/resume',
   contact: '/api/contact',
   projects: '/api/projects',
   experience: '/api/experience',
 }
 
+const emptyResumeForm = { title: '', subtitle: '', year: '', description: '', link: '' }
+const emptyCertificationForm = { title: '', issuer: '', date: '', url: '', credentialId: '', image: '', description: '' }
+const emptyAchievementForm = { title: '', description: '', category: '', date: '', images: [], link: '', organization: '' }
+const emptyExperienceForm = {
+  title: '',
+  company: '',
+  location: '',
+  startDate: '',
+  endDate: '',
+  current: false,
+  summary: '',
+  highlights: '',
+}
+
+function toDateInput(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toISOString().slice(0, 10)
+}
+
+function formatDate(value) {
+  if (!value) return ''
+  const date = new Date(value)
+  return Number.isNaN(date.getTime()) ? '' : date.toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+}
+
+function isValidImageSource(value) {
+  return !value || value.startsWith('/') || /^https?:\/\/[^\s]+$/i.test(value)
+}
+
+async function requestJson(url, options) {
+  const response = await fetch(url, options)
+  const text = await response.text()
+  let data = null
+
+  if (text) {
+    try {
+      data = JSON.parse(text)
+    } catch {
+      throw new Error(`Server returned an invalid response (${response.status}).`)
+    }
+  }
+
+  if (!response.ok) {
+    const error = new Error(data?.error || `Request failed (${response.status}).`)
+    error.status = response.status
+    throw error
+  }
+
+  return data
+}
+
 export default function Admin({ initialData }) {
   const [tab, setTab] = useState('about')
   const [dbError, setDbError] = useState(initialData.dbError || false)
+  const [errorMessage, setErrorMessage] = useState('')
+  const [isSaving, setIsSaving] = useState(false)
   const [about, setAbout] = useState(initialData.about)
   const [aboutForm, setAboutForm] = useState({
     headline: initialData.about?.headline || 'About Me',
@@ -47,8 +107,18 @@ export default function Admin({ initialData }) {
   const [skillForm, setSkillForm] = useState({ name: '', category: '', level: '', keywords: '' })
   const [editingSkillId, setEditingSkillId] = useState(null)
 
+  const [certifications, setCertifications] = useState(initialData.certifications)
+  const [certificationForm, setCertificationForm] = useState(emptyCertificationForm)
+  const [editingCertificationId, setEditingCertificationId] = useState(null)
+
+  const [achievements, setAchievements] = useState(initialData.achievements)
+  const [achievementForm, setAchievementForm] = useState(emptyAchievementForm)
+  const [editingAchievementId, setEditingAchievementId] = useState(null)
+  const achievementUploadRef = useRef(null)
+  const certificationUploadRef = useRef(null)
+
   const [resumeItems, setResumeItems] = useState(initialData.resumeItems)
-  const [resumeForm, setResumeForm] = useState({ link: '' })
+  const [resumeForm, setResumeForm] = useState(emptyResumeForm)
   const [editingResumeId, setEditingResumeId] = useState(null)
 
   const [contacts, setContacts] = useState(initialData.contacts)
@@ -60,7 +130,7 @@ export default function Admin({ initialData }) {
   const [editingProjectId, setEditingProjectId] = useState(null)
 
   const [experiences, setExperiences] = useState(initialData.initialExperiences)
-  const [experienceForm, setExperienceForm] = useState({ title: '', company: '', startDate: '', endDate: '', summary: '' })
+  const [experienceForm, setExperienceForm] = useState(emptyExperienceForm)
   const [editingExperienceId, setEditingExperienceId] = useState(null)
 
   useEffect(() => {
@@ -68,135 +138,201 @@ export default function Admin({ initialData }) {
     setAbout(initialData.about)
     setQualifications(initialData.qualifications)
     setSkills(initialData.skills)
+    setCertifications(initialData.certifications)
+    setAchievements(initialData.achievements)
     setResumeItems(initialData.resumeItems)
     setContacts(initialData.contacts)
     setProjects(initialData.initialProjects)
     setExperiences(initialData.initialExperiences)
   }, [initialData])
 
+  function handleRequestError(error) {
+    setErrorMessage(error.message || 'Something went wrong.')
+    if (error.status === 401) Router.push('/admin/login')
+  }
+
+  function clearEditing() {
+    setEditingQualificationId(null)
+    setEditingSkillId(null)
+    setEditingCertificationId(null)
+    setEditingAchievementId(null)
+    setEditingResumeId(null)
+    setEditingContactId(null)
+    setEditingProjectId(null)
+    setEditingExperienceId(null)
+  }
+
+  function resetForms() {
+    setQualificationForm({ title: '', institution: '', date: '', description: '', url: '' })
+    setSkillForm({ name: '', category: '', level: '', keywords: '' })
+    setCertificationForm(emptyCertificationForm)
+    setAchievementForm(emptyAchievementForm)
+    setResumeForm(emptyResumeForm)
+    setContactForm({ type: '', value: '', link: '' })
+    setProjectForm({ title: '', description: '', link: '', image: '', repo: '', tags: '', featured: false })
+    setExperienceForm(emptyExperienceForm)
+    clearEditing()
+  }
+
+  async function handleAchievementUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsSaving(true)
+    setErrorMessage('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await fetch('/api/upload?folder=achievements', { method: 'POST', body: formData })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Upload failed.')
+      }
+      const data = await response.json()
+      setAchievementForm((prev) => ({ ...prev, images: [...prev.images, data.url] }))
+      if (achievementUploadRef.current) achievementUploadRef.current.value = ''
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to upload image.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  function removeAchievementImage(index) {
+    setAchievementForm((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
+  }
+
+  async function handleCertificationUpload(e) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsSaving(true)
+    setErrorMessage('')
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+      const response = await fetch('/api/upload?folder=certificates', { method: 'POST', body: formData })
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}))
+        throw new Error(data.error || 'Upload failed.')
+      }
+      const data = await response.json()
+      setCertificationForm((prev) => ({ ...prev, image: data.url }))
+      if (certificationUploadRef.current) certificationUploadRef.current.value = ''
+    } catch (error) {
+      setErrorMessage(error.message || 'Failed to upload image.')
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  function removeCertificationImage() {
+    setCertificationForm((prev) => ({ ...prev, image: '' }))
+  }
+
   async function fetchAbout() {
-    const res = await fetch(apiPaths.about)
-    const data = await res.json()
-    setAbout(data)
-    setAboutForm({ headline: data.headline || 'About Me', paragraphs: (data.paragraphs || []).join('\n\n') })
+    try {
+      const data = await requestJson(apiPaths.about)
+      setAbout(data)
+      setAboutForm({ headline: data.headline || 'About Me', paragraphs: (data.paragraphs || []).join('\n\n') })
+      setDbError(false)
+      setErrorMessage('')
+    } catch (error) {
+      handleRequestError(error)
+    }
   }
 
   async function fetchList(key) {
-    const res = await fetch(apiPaths[key])
-    const data = await res.json()
-    switch (key) {
-      case 'qualification':
-        setQualifications(data)
-        break
-      case 'skills':
-        setSkills(data)
-        break
-      case 'resume':
-        setResumeItems(data)
-        break
-      case 'contact':
-        setContacts(data)
-        break
-      case 'projects':
-        setProjects(data)
-        break
-      case 'experience':
-        setExperiences(data)
-        break
+    try {
+      const data = await requestJson(apiPaths[key])
+      switch (key) {
+        case 'qualification': setQualifications(data); break
+        case 'skills': setSkills(data); break
+        case 'certifications': setCertifications(data); break
+        case 'achievements': setAchievements(data); break
+        case 'resume': setResumeItems(data); break
+        case 'contact': setContacts(data); break
+        case 'projects': setProjects(data); break
+        case 'experience': setExperiences(data); break
+      }
+      setDbError(false)
+      setErrorMessage('')
+    } catch (error) {
+      handleRequestError(error)
     }
   }
 
   async function submit(e) {
     e.preventDefault()
+    setIsSaving(true)
+    setErrorMessage('')
 
-    if (tab === 'about') {
-      const payload = {
-        headline: aboutForm.headline,
-        paragraphs: aboutForm.paragraphs
-          .split(/\r?\n\s*\n/)
-          .map((line) => line.trim())
-          .filter(Boolean),
-      }
-      const res = await fetch(apiPaths.about, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      })
-      const result = await res.json()
-      if (!res.ok) {
-        alert(result.error || 'Unable to save About content.')
+    try {
+      if (tab === 'about') {
+        const payload = {
+          headline: aboutForm.headline,
+          paragraphs: aboutForm.paragraphs.split(/\r?\n\s*\n/).map((line) => line.trim()).filter(Boolean),
+        }
+        await requestJson(apiPaths.about, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        await fetchAbout()
         return
       }
-      fetchAbout()
-      return
-    }
 
-    const payloadMap = {
-      qualification: qualificationForm,
-      skills: { ...skillForm, keywords: skillForm.keywords.split(',').map((k) => k.trim()).filter(Boolean) },
-      resume: resumeForm,
-      contact: contactForm,
-      projects: {
-        ...projectForm,
-        tags: projectForm.tags.split(',').map((tag) => tag.trim()).filter(Boolean),
-      },
-      experience: experienceForm,
-    }
+      const payloadMap = {
+        qualification: qualificationForm,
+        skills: { ...skillForm, keywords: skillForm.keywords.split(',').map((item) => item.trim()).filter(Boolean) },
+        certifications: certificationForm,
+        achievements: {
+          ...achievementForm,
+          images: achievementForm.images.filter(Boolean),
+        },
+        resume: resumeForm,
+        contact: contactForm,
+        projects: { ...projectForm, tags: projectForm.tags.split(',').map((item) => item.trim()).filter(Boolean) },
+        experience: {
+          ...experienceForm,
+          endDate: experienceForm.current ? '' : experienceForm.endDate,
+          highlights: experienceForm.highlights.split('\n').map((item) => item.trim()).filter(Boolean),
+        },
+      }
+      const editingId = {
+        qualification: editingQualificationId,
+        skills: editingSkillId,
+        certifications: editingCertificationId,
+        achievements: editingAchievementId,
+        resume: editingResumeId,
+        contact: editingContactId,
+        projects: editingProjectId,
+        experience: editingExperienceId,
+      }[tab]
+      const url = editingId ? `${apiPaths[tab]}/${editingId}` : apiPaths[tab]
 
-    const payload = payloadMap[tab]
-    const editingId = {
-      qualification: editingQualificationId,
-      skills: editingSkillId,
-      resume: editingResumeId,
-      contact: editingContactId,
-      projects: editingProjectId,
-      experience: editingExperienceId,
-    }[tab]
-
-    const url = editingId ? `${apiPaths[tab]}/${editingId}` : apiPaths[tab]
-    const method = editingId ? 'PUT' : 'POST'
-
-    const res = await fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    })
-    const result = await res.json()
-    if (!res.ok) {
-      alert(result.error || 'Unable to save item.')
-      return
-    }
-
-    setQualificationForm({ title: '', institution: '', date: '', description: '', url: '' })
-    setSkillForm({ name: '', category: '', level: '', keywords: '' })
-    setResumeForm({ link: '' })
-    setContactForm({ type: '', value: '', link: '' })
-    setProjectForm({ title: '', description: '', link: '', image: '', repo: '', tags: '', featured: false })
-    setExperienceForm({ title: '', company: '', startDate: '', endDate: '', summary: '' })
-    setEditingQualificationId(null)
-    setEditingSkillId(null)
-    setEditingResumeId(null)
-    setEditingContactId(null)
-    setEditingProjectId(null)
-    setEditingExperienceId(null)
-
-    if (tab === 'about') {
-      fetchAbout()
-    } else {
-      fetchList(tab)
+      await requestJson(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payloadMap[tab]),
+      })
+      resetForms()
+      await fetchList(tab)
+    } catch (error) {
+      handleRequestError(error)
+    } finally {
+      setIsSaving(false)
     }
   }
 
   async function editItem(id) {
-    const res = await fetch(`${apiPaths[tab]}/${id}`)
-    const item = await res.json()
-
-    switch (tab) {
+    setErrorMessage('')
+    try {
+      const item = await requestJson(`${apiPaths[tab]}/${id}`)
+      switch (tab) {
       case 'qualification':
         setQualificationForm({
           title: item.title || '',
           institution: item.institution || '',
-          date: item.date || '',
+          date: toDateInput(item.date),
           description: item.description || '',
           url: item.url || '',
         })
@@ -211,8 +347,38 @@ export default function Admin({ initialData }) {
         })
         setEditingSkillId(id)
         break
+      case 'certifications':
+        setCertificationForm({
+          title: item.title || '',
+          issuer: item.issuer || '',
+          date: toDateInput(item.date),
+          url: item.url || '',
+          credentialId: item.credentialId || '',
+          image: item.image || '',
+          description: item.description || '',
+        })
+        setEditingCertificationId(id)
+        break
+      case 'achievements':
+        setAchievementForm({
+          title: item.title || '',
+          description: item.description || '',
+          category: item.category || '',
+          date: toDateInput(item.date),
+          images: item.images || [],
+          link: item.link || '',
+          organization: item.organization || '',
+        })
+        setEditingAchievementId(id)
+        break
       case 'resume':
-        setResumeForm({ link: item.link || '' })
+        setResumeForm({
+          title: item.title || '',
+          subtitle: item.subtitle || '',
+          year: item.year || '',
+          description: item.description || '',
+          link: item.link || '',
+        })
         setEditingResumeId(id)
         break
       case 'contact':
@@ -235,12 +401,18 @@ export default function Admin({ initialData }) {
         setExperienceForm({
           title: item.title || '',
           company: item.company || '',
-          startDate: item.startDate || '',
-          endDate: item.endDate || '',
+          location: item.location || '',
+          startDate: toDateInput(item.startDate),
+          endDate: toDateInput(item.endDate),
+          current: Boolean(item.current),
           summary: item.summary || '',
+          highlights: (item.highlights || []).join('\n'),
         })
         setEditingExperienceId(id)
         break
+      }
+    } catch (error) {
+      handleRequestError(error)
     }
   }
 
@@ -248,19 +420,30 @@ export default function Admin({ initialData }) {
     const confirmMessage = {
       qualification: 'Delete this qualification?',
       skills: 'Delete this skill?',
+      certifications: 'Delete this certification?',
+      achievements: 'Delete this achievement?',
       resume: 'Delete this resume item?',
       contact: 'Delete this contact method?',
       projects: 'Delete this project?',
       experience: 'Delete this experience?',
     }[tab]
     if (!confirm(confirmMessage)) return
-    await fetch(`${apiPaths[tab]}/${id}`, { method: 'DELETE' })
-    fetchList(tab)
+    try {
+      setErrorMessage('')
+      await requestJson(`${apiPaths[tab]}/${id}`, { method: 'DELETE' })
+      await fetchList(tab)
+    } catch (error) {
+      handleRequestError(error)
+    }
   }
 
   async function logout() {
-    await fetch('/api/auth/logout')
-    Router.push('/')
+    try {
+      await requestJson('/api/auth/logout', { method: 'POST' })
+      Router.push('/admin/login')
+    } catch (error) {
+      handleRequestError(error)
+    }
   }
 
   return (
@@ -281,6 +464,11 @@ export default function Admin({ initialData }) {
             <p className="text-sm">Admin data is unavailable while MongoDB Atlas cannot be reached.</p>
           </div>
         )}
+        {errorMessage && (
+          <div role="alert" className="mt-4 rounded-2xl border border-red-500/40 bg-red-500/10 p-4 text-sm text-red-100">
+            {errorMessage}
+          </div>
+        )}
       </div>
 
       <div className="max-w-6xl mx-auto mb-8 overflow-x-auto pb-4">
@@ -289,6 +477,8 @@ export default function Admin({ initialData }) {
             <button
               key={item.key}
               onClick={() => {
+                resetForms()
+                setErrorMessage('')
                 setTab(item.key)
                 if (item.key === 'about') fetchAbout()
                 else fetchList(item.key)
@@ -310,6 +500,8 @@ export default function Admin({ initialData }) {
               {tab === 'about' && 'Edit About'}
               {tab === 'qualification' && (editingQualificationId ? 'Edit Qualification' : 'New Qualification')}
               {tab === 'skills' && (editingSkillId ? 'Edit Skill' : 'New Skill')}
+              {tab === 'certifications' && (editingCertificationId ? 'Edit Certification' : 'New Certification')}
+              {tab === 'achievements' && (editingAchievementId ? 'Edit Achievement' : 'New Achievement')}
               {tab === 'resume' && (editingResumeId ? 'Edit Resume Item' : 'New Resume Item')}
               {tab === 'contact' && (editingContactId ? 'Edit Contact' : 'New Contact')}
               {tab === 'projects' && (editingProjectId ? 'Edit Project' : 'New Project')}
@@ -341,6 +533,7 @@ export default function Admin({ initialData }) {
                   value={qualificationForm.title}
                   onChange={(e) => setQualificationForm({ ...qualificationForm, title: e.target.value })}
                   placeholder="Qualification Title"
+                  required
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
@@ -350,6 +543,7 @@ export default function Admin({ initialData }) {
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
+                  type="date"
                   value={qualificationForm.date}
                   onChange={(e) => setQualificationForm({ ...qualificationForm, date: e.target.value })}
                   placeholder="Date"
@@ -377,6 +571,7 @@ export default function Admin({ initialData }) {
                   value={skillForm.name}
                   onChange={(e) => setSkillForm({ ...skillForm, name: e.target.value })}
                   placeholder="Skill Name"
+                  required
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
@@ -400,13 +595,180 @@ export default function Admin({ initialData }) {
               </>
             )}
 
+            {tab === 'certifications' && (
+              <>
+                <input
+                  value={certificationForm.title}
+                  onChange={(e) => setCertificationForm({ ...certificationForm, title: e.target.value })}
+                  placeholder="Certification Title"
+                  required
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={certificationForm.issuer}
+                  onChange={(e) => setCertificationForm({ ...certificationForm, issuer: e.target.value })}
+                  placeholder="Issuer (e.g., Google, AWS, Microsoft)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  type="date"
+                  value={certificationForm.date}
+                  onChange={(e) => setCertificationForm({ ...certificationForm, date: e.target.value })}
+                  placeholder="Date Issued"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <div>
+                  <label className="block text-sm text-slate-300 mb-2">Certificate Image</label>
+                  <div className="space-y-3">
+                    {certificationForm.image && (
+                      <div className="group relative inline-block">
+                        <div className="relative h-40 w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 sm:w-72">
+                          <Image src={certificationForm.image} alt="Certificate image" fill sizes="288px" unoptimized className="object-cover" />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={removeCertificationImage}
+                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-sm text-white opacity-0 transition hover:bg-red-500 group-hover:opacity-100"
+                          aria-label="Remove image"
+                        >
+                          ×
+                        </button>
+                      </div>
+                    )}
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-600 px-4 py-3 text-sm text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">
+                      <span>{certificationForm.image ? 'Replace Image' : '+ Add Image'}</span>
+                      <input ref={certificationUploadRef} type="file" accept="image/*" className="hidden" onChange={handleCertificationUpload} />
+                    </label>
+                  </div>
+                </div>
+                <textarea
+                  value={certificationForm.description}
+                  onChange={(e) => setCertificationForm({ ...certificationForm, description: e.target.value })}
+                  rows={4}
+                  placeholder="Description (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={certificationForm.credentialId}
+                  onChange={(e) => setCertificationForm({ ...certificationForm, credentialId: e.target.value })}
+                  placeholder="Credential ID (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={certificationForm.url}
+                  onChange={(e) => setCertificationForm({ ...certificationForm, url: e.target.value })}
+                  placeholder="Verification URL (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </>
+            )}
+
+            {tab === 'achievements' && (
+              <>
+                <input
+                  value={achievementForm.title}
+                  onChange={(e) => setAchievementForm({ ...achievementForm, title: e.target.value })}
+                  placeholder="Achievement Title"
+                  required
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={achievementForm.category}
+                  onChange={(e) => setAchievementForm({ ...achievementForm, category: e.target.value })}
+                  placeholder="Category (e.g., Hackathon, Award, Competition)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={achievementForm.organization}
+                  onChange={(e) => setAchievementForm({ ...achievementForm, organization: e.target.value })}
+                  placeholder="Organization/Event Name (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  type="date"
+                  value={achievementForm.date}
+                  onChange={(e) => setAchievementForm({ ...achievementForm, date: e.target.value })}
+                  placeholder="Date"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <div>
+                  <label className="block text-sm text-slate-300 mb-2">Achievement Images</label>
+                  <div className="space-y-3">
+                    {achievementForm.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {achievementForm.images.map((img, idx) => (
+                          <div key={idx} className="group relative h-24 w-24 overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
+                            <Image src={img} alt={`Achievement image ${idx + 1}`} fill sizes="96px" unoptimized className="object-cover" />
+                            <button
+                              type="button"
+                              onClick={() => removeAchievementImage(idx)}
+                              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white opacity-0 transition hover:bg-red-500 group-hover:opacity-100"
+                              aria-label={`Remove image ${idx + 1}`}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-600 px-4 py-3 text-sm text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">
+                      <span>+ Add Image</span>
+                      <input ref={achievementUploadRef} type="file" accept="image/*" className="hidden" onChange={handleAchievementUpload} />
+                    </label>
+                    {achievementForm.images.length > 0 && (
+                      <p className="text-xs text-slate-500">{achievementForm.images.length} image(s) selected</p>
+                    )}
+                  </div>
+                </div>
+                <textarea
+                  value={achievementForm.description}
+                  onChange={(e) => setAchievementForm({ ...achievementForm, description: e.target.value })}
+                  rows={4}
+                  placeholder="Description"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={achievementForm.link}
+                  onChange={(e) => setAchievementForm({ ...achievementForm, link: e.target.value })}
+                  placeholder="Link/URL (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+              </>
+            )}
+
             {tab === 'resume' && (
               <>
+                <input
+                  value={resumeForm.title}
+                  onChange={(e) => setResumeForm({ ...resumeForm, title: e.target.value })}
+                  placeholder="Resume title (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={resumeForm.subtitle}
+                  onChange={(e) => setResumeForm({ ...resumeForm, subtitle: e.target.value })}
+                  placeholder="Subtitle (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
+                  value={resumeForm.year}
+                  onChange={(e) => setResumeForm({ ...resumeForm, year: e.target.value })}
+                  placeholder="Year (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <textarea
+                  value={resumeForm.description}
+                  onChange={(e) => setResumeForm({ ...resumeForm, description: e.target.value })}
+                  rows={3}
+                  placeholder="Description (optional)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
                 <label className="block text-sm text-slate-300">Resume PDF Link</label>
                 <input
                   value={resumeForm.link}
                   onChange={(e) => setResumeForm({ ...resumeForm, link: e.target.value })}
                   placeholder="https://.../resume.pdf or /resume.pdf"
+                  required
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <p className="text-xs text-slate-400 mt-1">Provide a public URL or upload the PDF to <span className="italic">public/</span> and use <span className="font-mono">/resume.pdf</span>.</p>
@@ -419,12 +781,14 @@ export default function Admin({ initialData }) {
                   value={contactForm.type}
                   onChange={(e) => setContactForm({ ...contactForm, type: e.target.value })}
                   placeholder="Contact Type"
+                  required
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
                   value={contactForm.value}
                   onChange={(e) => setContactForm({ ...contactForm, value: e.target.value })}
                   placeholder="Value"
+                  required
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
@@ -442,6 +806,7 @@ export default function Admin({ initialData }) {
                   value={projectForm.title}
                   onChange={(e) => setProjectForm({ ...projectForm, title: e.target.value })}
                   placeholder="Project Title"
+                  required
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <textarea
@@ -457,6 +822,9 @@ export default function Admin({ initialData }) {
                   placeholder="Image URL"
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
+                {!isValidImageSource(projectForm.image) && (
+                  <p className="text-sm text-red-300">Use an http(s) image URL or a public path beginning with /.</p>
+                )}
                 <input
                   value={projectForm.repo}
                   onChange={(e) => setProjectForm({ ...projectForm, repo: e.target.value })}
@@ -503,6 +871,12 @@ export default function Admin({ initialData }) {
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <input
+                  value={experienceForm.location}
+                  onChange={(e) => setExperienceForm({ ...experienceForm, location: e.target.value })}
+                  placeholder="Location"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
+                <input
                   type="date"
                   value={experienceForm.startDate || ''}
                   onChange={(e) => setExperienceForm({ ...experienceForm, startDate: e.target.value })}
@@ -514,8 +888,18 @@ export default function Admin({ initialData }) {
                   value={experienceForm.endDate || ''}
                   onChange={(e) => setExperienceForm({ ...experienceForm, endDate: e.target.value })}
                   placeholder="End Date"
+                  disabled={experienceForm.current}
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
+                <label className="inline-flex items-center gap-3 text-sm text-slate-300">
+                  <input
+                    type="checkbox"
+                    checked={experienceForm.current}
+                    onChange={(e) => setExperienceForm({ ...experienceForm, current: e.target.checked, endDate: e.target.checked ? '' : experienceForm.endDate })}
+                    className="h-4 w-4 rounded border-slate-700 bg-slate-900 text-cyan-500 focus:ring-cyan-500"
+                  />
+                  I currently work here
+                </label>
                 <textarea
                   value={experienceForm.summary}
                   onChange={(e) => setExperienceForm({ ...experienceForm, summary: e.target.value })}
@@ -523,30 +907,24 @@ export default function Admin({ initialData }) {
                   placeholder="Summary"
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
+                <textarea
+                  value={experienceForm.highlights}
+                  onChange={(e) => setExperienceForm({ ...experienceForm, highlights: e.target.value })}
+                  rows={4}
+                  placeholder="Highlights (one per line)"
+                  className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                />
               </>
             )}
 
             <div className="flex gap-2">
-              <button type="submit" className="flex-1 py-3 bg-cyan-500 hover:bg-cyan-400 rounded-lg font-semibold transition">
-                Save
+              <button type="submit" disabled={isSaving || (tab === 'projects' && !isValidImageSource(projectForm.image)) || (tab === 'certifications' && !isValidImageSource(certificationForm.image))} className="flex-1 rounded-lg bg-cyan-500 py-3 font-semibold transition hover:bg-cyan-400 disabled:cursor-not-allowed disabled:opacity-50">
+                {isSaving ? 'Saving…' : 'Save'}
               </button>
-              {(editingQualificationId || editingSkillId || editingResumeId || editingContactId || editingProjectId || editingExperienceId) && (
+              {(editingQualificationId || editingSkillId || editingCertificationId || editingAchievementId || editingResumeId || editingContactId || editingProjectId || editingExperienceId) && (
                 <button
                   type="button"
-                  onClick={() => {
-                    setEditingQualificationId(null)
-                    setEditingSkillId(null)
-                    setEditingResumeId(null)
-                    setEditingContactId(null)
-                    setEditingProjectId(null)
-                    setEditingExperienceId(null)
-                    setQualificationForm({ title: '', institution: '', date: '', description: '', url: '' })
-                    setSkillForm({ name: '', category: '', level: '', keywords: '' })
-                    setResumeForm({ title: '', subtitle: '', year: '', description: '', link: '' })
-                    setContactForm({ type: '', value: '', link: '' })
-                    setProjectForm({ title: '', description: '', link: '', image: '', repo: '', tags: '', featured: false })
-                    setExperienceForm({ title: '', company: '', startDate: '', endDate: '', summary: '' })
-                  }}
+                  onClick={resetForms}
                   className="flex-1 py-3 bg-slate-700 hover:bg-slate-600 rounded-lg font-semibold transition"
                 >
                   Cancel
@@ -590,7 +968,7 @@ export default function Admin({ initialData }) {
                         </div>
                       </div>
                       <p className="text-slate-300 text-sm mb-2">{item.description}</p>
-                      <p className="text-slate-500 text-xs">{item.date}</p>
+                      <p className="text-slate-500 text-xs">{formatDate(item.date)}</p>
                     </div>
                   ))
                 )}
@@ -621,6 +999,93 @@ export default function Admin({ initialData }) {
               </div>
             )}
 
+            {tab === 'certifications' && (
+              <div className="space-y-3 max-h-[32rem] overflow-y-auto">
+                {certifications.length === 0 ? (
+                  <p className="text-slate-400 text-center py-8">No certifications yet. Add one to get started.</p>
+                ) : (
+                  certifications.map((item) => (
+                    <div key={item._id} className="bg-slate-700 p-4 rounded-lg border border-slate-600 hover:border-cyan-400 transition">
+                      {item.image && isValidImageSource(item.image) && (
+                        <div className="relative mb-4 h-40 overflow-hidden rounded-2xl bg-slate-900">
+                          <Image src={item.image} alt={item.title} fill sizes="(min-width: 768px) 50vw, 100vw" unoptimized className="object-cover" />
+                        </div>
+                      )}
+                      {item.image && !isValidImageSource(item.image) && (
+                        <p className="mb-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-200">This certification has an invalid image URL. Edit it to restore the preview.</p>
+                      )}
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div>
+                          <h3 className="font-bold text-white">{item.title}</h3>
+                          <p className="text-slate-400 text-sm">{item.issuer}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => editItem(item._id)} className="px-2 py-1 text-sm bg-amber-600 hover:bg-amber-700 rounded transition">Edit</button>
+                          <button onClick={() => removeItem(item._id)} className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition">Delete</button>
+                        </div>
+                      </div>
+                      {item.description && <p className="text-slate-300 text-sm mb-2">{item.description}</p>}
+                      {item.credentialId && <p className="text-slate-300 text-sm mb-2">ID: {item.credentialId}</p>}
+                      <p className="text-slate-500 text-xs">{formatDate(item.date)}</p>
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-cyan-300 hover:text-white text-sm font-semibold">
+                          View Certificate
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
+            {tab === 'achievements' && (
+              <div className="space-y-3 max-h-[32rem] overflow-y-auto">
+                {achievements.length === 0 ? (
+                  <p className="text-slate-400 text-center py-8">No achievements yet. Add one to get started.</p>
+                ) : (
+                  achievements.map((item) => (
+                    <div key={item._id} className="bg-slate-700 p-4 rounded-lg border border-slate-600 hover:border-cyan-400 transition">
+                      {item.images && item.images.length > 0 && (
+                        <div className="mb-4 grid grid-cols-3 gap-2">
+                          {item.images.slice(0, 3).map((img, idx) => (
+                            isValidImageSource(img) ? (
+                              <div key={idx} className="relative h-24 overflow-hidden rounded-lg bg-slate-900">
+                                <Image src={img} alt={`${item.title} ${idx + 1}`} fill sizes="150px" unoptimized className="object-cover" />
+                              </div>
+                            ) : null
+                          ))}
+                          {item.images.length > 3 && (
+                            <div className="relative h-24 overflow-hidden rounded-lg bg-slate-950 flex items-center justify-center">
+                              <p className="text-cyan-300 font-semibold text-sm">+{item.images.length - 3} more</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      <div className="flex items-start justify-between gap-4 mb-2">
+                        <div>
+                          <h3 className="font-bold text-white">{item.title}</h3>
+                          {item.category && <span className="inline-block mt-1 px-2 py-1 text-xs bg-cyan-500/20 text-cyan-300 rounded-full">{item.category}</span>}
+                          <p className="text-slate-400 text-sm mt-1">{item.organization}</p>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => editItem(item._id)} className="px-2 py-1 text-sm bg-amber-600 hover:bg-amber-700 rounded transition">Edit</button>
+                          <button onClick={() => removeItem(item._id)} className="px-2 py-1 text-sm bg-red-600 hover:bg-red-700 rounded transition">Delete</button>
+                        </div>
+                      </div>
+                      {item.description && <p className="text-slate-300 text-sm mb-2">{item.description}</p>}
+                      <p className="text-slate-500 text-xs">{formatDate(item.date)}</p>
+                      {item.images && <p className="text-slate-500 text-xs mt-1">{item.images.length} image(s)</p>}
+                      {item.link && (
+                        <a href={item.link} target="_blank" rel="noopener noreferrer" className="mt-2 inline-block text-cyan-300 hover:text-white text-sm font-semibold">
+                          View Details
+                        </a>
+                      )}
+                    </div>
+                  ))
+                )}
+              </div>
+            )}
+
             {tab === 'resume' && (
               <div className="space-y-3 max-h-[32rem] overflow-y-auto">
                 {resumeItems.length === 0 ? (
@@ -629,7 +1094,10 @@ export default function Admin({ initialData }) {
                   resumeItems.map((item) => (
                     <div key={item._id} className="bg-slate-700 p-4 rounded-lg border border-slate-600 hover:border-cyan-400 transition flex items-center justify-between">
                       <div>
+                        {item.title && <h3 className="font-bold text-white">{item.title}</h3>}
+                        {item.subtitle && <p className="text-sm text-slate-300">{item.subtitle}</p>}
                         <a href={item.link} target="_blank" rel="noopener noreferrer" className="text-cyan-300 font-semibold">Download Resume (PDF)</a>
+                        {item.year && <p className="text-slate-400 text-xs mt-1">{item.year}</p>}
                         {item.link && <p className="text-slate-400 text-xs mt-1">{item.link}</p>}
                       </div>
                       <div className="flex gap-2">
@@ -673,10 +1141,13 @@ export default function Admin({ initialData }) {
                 ) : (
                   projects.map((p) => (
                     <div key={p._id} className="bg-slate-700 p-4 rounded-lg border border-slate-600 hover:border-cyan-400 transition">
-                      {p.image && (
+                      {p.image && isValidImageSource(p.image) && (
                         <div className="relative mb-4 h-40 overflow-hidden rounded-2xl bg-slate-900">
                           <Image src={p.image} alt={p.title} fill sizes="(min-width: 768px) 50vw, 100vw" unoptimized className="object-cover" />
                         </div>
+                      )}
+                      {p.image && !isValidImageSource(p.image) && (
+                        <p className="mb-3 rounded-lg bg-red-500/10 p-3 text-sm text-red-200">This project has an invalid image URL. Edit it to restore the preview.</p>
                       )}
                       <div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                         <div>
@@ -715,7 +1186,7 @@ export default function Admin({ initialData }) {
                       <div className="flex items-start justify-between gap-4 mb-2">
                         <div>
                           <h3 className="font-bold text-white">{e.title}</h3>
-                          <p className="text-slate-400 text-sm">{e.company}</p>
+                          <p className="text-slate-400 text-sm">{[e.company, e.location].filter(Boolean).join(' · ')}</p>
                         </div>
                         <div className="flex gap-2">
                           <button onClick={() => editItem(e._id)} className="px-2 py-1 text-sm bg-amber-600 hover:bg-amber-700 rounded transition">Edit</button>
@@ -723,7 +1194,12 @@ export default function Admin({ initialData }) {
                         </div>
                       </div>
                       <p className="text-slate-300 text-sm mb-2">{e.summary}</p>
-                      <p className="text-slate-500 text-xs">{e.startDate} — {e.endDate || 'Present'}</p>
+                      <p className="text-slate-500 text-xs">{formatDate(e.startDate)} — {e.current ? 'Present' : formatDate(e.endDate) || 'Present'}</p>
+                      {e.highlights?.length > 0 && (
+                        <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-300">
+                          {e.highlights.map((highlight) => <li key={highlight}>{highlight}</li>)}
+                        </ul>
+                      )}
                     </div>
                   ))
                 )}
@@ -741,14 +1217,14 @@ export async function getServerSideProps(ctx) {
   const cookie = req.headers.cookie || ''
   const match = cookie.split(';').map((s) => s.trim()).find((s) => s.startsWith('token='))
   if (!match) {
-    return { redirect: { destination: '/', permanent: false } }
+    return { redirect: { destination: '/admin/login', permanent: false } }
   }
   const token = match.replace('token=', '')
   const jwt = require('jsonwebtoken')
   try {
     jwt.verify(token, process.env.JWT_SECRET)
   } catch (e) {
-    return { redirect: { destination: '/', permanent: false } }
+    return { redirect: { destination: '/admin/login', permanent: false } }
   }
 
   if (process.env.MONGODB_URI) {
@@ -757,6 +1233,8 @@ export async function getServerSideProps(ctx) {
       const about = (await About.findOne({}).lean()) || { headline: 'About Me', paragraphs: [] }
       const qualifications = await Qualification.find({}).sort({ date: -1, createdAt: -1 }).lean()
       const skills = await Skill.find({}).sort({ createdAt: -1 }).lean()
+      const certifications = await Certification.find({}).sort({ date: -1, createdAt: -1 }).lean()
+      const achievements = await Achievement.find({}).sort({ date: -1, createdAt: -1 }).lean()
       const resumeItems = await Resume.find({}).sort({ createdAt: -1 }).lean()
       const contacts = await Contact.find({}).sort({ createdAt: -1 }).lean()
       const projects = await Project.find({}).sort({ createdAt: -1 }).lean()
@@ -768,6 +1246,8 @@ export async function getServerSideProps(ctx) {
             about: JSON.parse(JSON.stringify(about)),
             qualifications: JSON.parse(JSON.stringify(qualifications)),
             skills: JSON.parse(JSON.stringify(skills)),
+            certifications: JSON.parse(JSON.stringify(certifications)),
+            achievements: JSON.parse(JSON.stringify(achievements)),
             resumeItems: JSON.parse(JSON.stringify(resumeItems)),
             contacts: JSON.parse(JSON.stringify(contacts)),
             initialProjects: JSON.parse(JSON.stringify(projects)),
@@ -784,6 +1264,8 @@ export async function getServerSideProps(ctx) {
             about: { headline: 'About Me', paragraphs: [] },
             qualifications: [],
             skills: [],
+            certifications: [],
+            achievements: [],
             resumeItems: [],
             contacts: [],
             initialProjects: [],
@@ -801,6 +1283,8 @@ export async function getServerSideProps(ctx) {
         about: { headline: 'About Me', paragraphs: [] },
         qualifications: [],
         skills: [],
+        certifications: [],
+        achievements: [],
         resumeItems: [],
         contacts: [],
         initialProjects: [],

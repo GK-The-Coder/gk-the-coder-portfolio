@@ -1,20 +1,30 @@
 import connect from '../../../lib/mongodb'
 import Qualification from '../../../models/Qualification'
+import { requireAdmin } from '../../../utils/auth'
+import { cleanString, methodNotAllowed, parseOptionalDate, sendApiError } from '../../../utils/api'
+
+function qualificationPayload(body = {}) {
+  return {
+    title: cleanString(body.title),
+    institution: cleanString(body.institution),
+    date: parseOptionalDate(body.date),
+    description: cleanString(body.description),
+    url: cleanString(body.url),
+  }
+}
 
 export default async function handler(req, res) {
-  await connect()
-  if (req.method === 'GET') {
-    const items = await Qualification.find({}).sort({ date: -1, createdAt: -1 }).lean()
-    return res.json(items)
-  }
-  if (req.method === 'POST') {
-    try {
-      const item = new Qualification(req.body)
-      await item.save()
-      return res.status(201).json(item)
-    } catch (e) {
-      return res.status(400).json({ error: e.message })
+  if (!['GET', 'POST'].includes(req.method)) return methodNotAllowed(res, ['GET', 'POST'])
+  if (req.method === 'POST' && !requireAdmin(req, res)) return
+  try {
+    await connect()
+    if (req.method === 'GET') {
+      const items = await Qualification.find({}).sort({ date: -1, createdAt: -1 }).lean()
+      return res.status(200).json(items)
     }
+    const item = await Qualification.create(qualificationPayload(req.body))
+    return res.status(201).json(item)
+  } catch (error) {
+    return sendApiError(res, error, 'Unable to process qualifications.')
   }
-  res.status(405).end()
 }

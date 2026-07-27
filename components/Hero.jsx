@@ -31,11 +31,11 @@ export default function Hero({ about, resumeItems }) {
           </motion.div>
 
           <motion.div variants={item} className="mt-6 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-slate-300 sm:gap-x-3 sm:text-sm">
+            <span>Mern-Stack</span>
+            <span aria-hidden="true">•</span>
+            <span>Python</span>
+            <span aria-hidden="true">•</span>
             <span>JavaScript</span>
-            <span aria-hidden="true">•</span>
-            <span>React</span>
-            <span aria-hidden="true">•</span>
-            <span>Next.js</span>
             <span aria-hidden="true">•</span>
             <span>Node.js</span>
             <span aria-hidden="true">•</span>
