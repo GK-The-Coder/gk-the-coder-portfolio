@@ -8,7 +8,7 @@ import Skill from '../../models/Skill'
 import Resume from '../../models/Resume'
 import Contact from '../../models/Contact'
 import About from '../../models/About'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import Image from 'next/image'
 import Router from 'next/router'
 
@@ -114,8 +114,6 @@ export default function Admin({ initialData }) {
   const [achievements, setAchievements] = useState(initialData.achievements)
   const [achievementForm, setAchievementForm] = useState(emptyAchievementForm)
   const [editingAchievementId, setEditingAchievementId] = useState(null)
-  const achievementUploadRef = useRef(null)
-  const certificationUploadRef = useRef(null)
 
   const [resumeItems, setResumeItems] = useState(initialData.resumeItems)
   const [resumeForm, setResumeForm] = useState(emptyResumeForm)
@@ -174,58 +172,20 @@ export default function Admin({ initialData }) {
     clearEditing()
   }
 
-  async function handleAchievementUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setIsSaving(true)
-    setErrorMessage('')
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const response = await fetch('/api/upload?folder=achievements', { method: 'POST', body: formData })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || 'Upload failed.')
-      }
-      const data = await response.json()
-      setAchievementForm((prev) => ({ ...prev, images: [...prev.images, data.url] }))
-      if (achievementUploadRef.current) achievementUploadRef.current.value = ''
-    } catch (error) {
-      setErrorMessage(error.message || 'Failed to upload image.')
-    } finally {
-      setIsSaving(false)
-    }
+  function addAchievementImageInput() {
+    setAchievementForm((prev) => ({ ...prev, images: [...prev.images, ''] }))
   }
 
-  function removeAchievementImage(index) {
+  function removeAchievementImageInput(index) {
     setAchievementForm((prev) => ({ ...prev, images: prev.images.filter((_, i) => i !== index) }))
   }
 
-  async function handleCertificationUpload(e) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setIsSaving(true)
-    setErrorMessage('')
-    try {
-      const formData = new FormData()
-      formData.append('file', file)
-      const response = await fetch('/api/upload?folder=certificates', { method: 'POST', body: formData })
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}))
-        throw new Error(data.error || 'Upload failed.')
-      }
-      const data = await response.json()
-      setCertificationForm((prev) => ({ ...prev, image: data.url }))
-      if (certificationUploadRef.current) certificationUploadRef.current.value = ''
-    } catch (error) {
-      setErrorMessage(error.message || 'Failed to upload image.')
-    } finally {
-      setIsSaving(false)
-    }
-  }
-
-  function removeCertificationImage() {
-    setCertificationForm((prev) => ({ ...prev, image: '' }))
+  function updateAchievementImage(index, value) {
+    setAchievementForm((prev) => {
+      const updated = [...prev.images]
+      updated[index] = value
+      return { ...prev, images: updated }
+    })
   }
 
   async function fetchAbout() {
@@ -618,28 +578,14 @@ export default function Admin({ initialData }) {
                   className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
                 />
                 <div>
-                  <label className="block text-sm text-slate-300 mb-2">Certificate Image</label>
-                  <div className="space-y-3">
-                    {certificationForm.image && (
-                      <div className="group relative inline-block">
-                        <div className="relative h-40 w-full overflow-hidden rounded-lg border border-slate-700 bg-slate-900 sm:w-72">
-                          <Image src={certificationForm.image} alt="Certificate image" fill sizes="288px" unoptimized className="object-cover" />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={removeCertificationImage}
-                          className="absolute right-2 top-2 flex h-7 w-7 items-center justify-center rounded-full bg-red-600 text-sm text-white opacity-0 transition hover:bg-red-500 group-hover:opacity-100"
-                          aria-label="Remove image"
-                        >
-                          ×
-                        </button>
-                      </div>
-                    )}
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-600 px-4 py-3 text-sm text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">
-                      <span>{certificationForm.image ? 'Replace Image' : '+ Add Image'}</span>
-                      <input ref={certificationUploadRef} type="file" accept="image/*" className="hidden" onChange={handleCertificationUpload} />
-                    </label>
-                  </div>
+                  <label className="block text-sm text-slate-300 mb-2">Certificate Image Path</label>
+                  <input
+                    value={certificationForm.image}
+                    onChange={(e) => setCertificationForm({ ...certificationForm, image: e.target.value })}
+                    placeholder="/certificates/your-certificate.jpg"
+                    className="w-full rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                  <p className="text-xs text-slate-400 mt-1">Place your image in <span className="italic">public/certificates/</span> and use the path starting with <span className="font-mono">/certificates/</span>.</p>
                 </div>
                 <textarea
                   value={certificationForm.description}
@@ -693,31 +639,33 @@ export default function Admin({ initialData }) {
                 />
                 <div>
                   <label className="block text-sm text-slate-300 mb-2">Achievement Images</label>
-                  <div className="space-y-3">
-                    {achievementForm.images.length > 0 && (
-                      <div className="flex flex-wrap gap-2">
-                        {achievementForm.images.map((img, idx) => (
-                          <div key={idx} className="group relative h-24 w-24 overflow-hidden rounded-lg border border-slate-700 bg-slate-900">
-                            <Image src={img} alt={`Achievement image ${idx + 1}`} fill sizes="96px" unoptimized className="object-cover" />
-                            <button
-                              type="button"
-                              onClick={() => removeAchievementImage(idx)}
-                              className="absolute right-1 top-1 flex h-6 w-6 items-center justify-center rounded-full bg-red-600 text-xs text-white opacity-0 transition hover:bg-red-500 group-hover:opacity-100"
-                              aria-label={`Remove image ${idx + 1}`}
-                            >
-                              ×
-                            </button>
-                          </div>
-                        ))}
+                  <div className="space-y-2">
+                    {achievementForm.images.map((img, idx) => (
+                      <div key={idx} className="flex gap-2">
+                        <input
+                          value={img}
+                          onChange={(e) => updateAchievementImage(idx, e.target.value)}
+                          placeholder="/achievements/your-image.jpg"
+                          className="flex-1 rounded-lg border border-slate-700 bg-slate-900 px-4 py-3 text-white focus:border-cyan-500 focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeAchievementImageInput(idx)}
+                          className="flex h-11 w-11 items-center justify-center rounded-lg bg-red-600 text-white hover:bg-red-500 transition"
+                          aria-label="Remove image"
+                        >
+                          ×
+                        </button>
                       </div>
-                    )}
-                    <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-dashed border-slate-600 px-4 py-3 text-sm text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300">
-                      <span>+ Add Image</span>
-                      <input ref={achievementUploadRef} type="file" accept="image/*" className="hidden" onChange={handleAchievementUpload} />
-                    </label>
-                    {achievementForm.images.length > 0 && (
-                      <p className="text-xs text-slate-500">{achievementForm.images.length} image(s) selected</p>
-                    )}
+                    ))}
+                    <button
+                      type="button"
+                      onClick={addAchievementImageInput}
+                      className="inline-flex items-center gap-2 rounded-lg border border-dashed border-slate-600 px-4 py-3 text-sm text-slate-300 transition hover:border-cyan-400 hover:text-cyan-300"
+                    >
+                      + Add Image Path
+                    </button>
+                    <p className="text-xs text-slate-400 mt-1">Place images in <span className="italic">public/achievements/</span> and enter paths starting with <span className="font-mono">/achievements/</span>.</p>
                   </div>
                 </div>
                 <textarea
