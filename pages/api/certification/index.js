@@ -24,7 +24,7 @@ export default async function handler(req, res) {
     if (!requireAdmin(req, res)) return
 
     try {
-      const { title, issuer, date, url, credentialId } = req.body
+      const { title, issuer, date, url, credentialId, image, description } = req.body
       if (!title) {
         return res.status(400).json({ error: 'Title is required.' })
       }
@@ -35,6 +35,8 @@ export default async function handler(req, res) {
         date: date || null,
         url: url?.trim() || '',
         credentialId: credentialId?.trim() || '',
+        image: image?.trim() || '',
+        description: description?.trim() || '',
       })
 
       return res.status(201).json(certification)
